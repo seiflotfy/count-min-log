@@ -17,7 +17,7 @@ type Log struct {
 	w     uint
 	d     uint
 	k     uint
-	count [][]uint8
+	count [][]uint16
 	topk  map[string]uint
 	x     float64
 }
@@ -71,9 +71,9 @@ func NewLog(delta float64, epsilon float64, k uint) (*Log, error) {
 
 	fmt.Println(d, w)
 
-	count := make([][]uint8, d)
+	count := make([][]uint16, d)
 	for i := uint(0); i < d; i++ {
-		count[i] = make([]uint8, w)
+		count[i] = make([]uint16, w)
 	}
 
 	log := &Log{
@@ -91,35 +91,35 @@ func NewLog(delta float64, epsilon float64, k uint) (*Log, error) {
 NewDefaultLog returns a logeth with delta = 0.0000001, epsilon = 0.0001 and k = 10
 */
 func NewDefaultLog() (*Log, error) {
-	return NewLog(0.001, 0.000001, 5)
+	return NewLog(0.00001, 0.00001, 10)
 }
 
 /*
 Reset the Log and clear all fields
 */
 func (log *Log) Reset() {
-	count := make([][]uint8, log.d)
+	count := make([][]uint16, log.d)
 	for i := uint(0); i < log.d; i++ {
-		count[i] = make([]uint8, log.w)
+		count[i] = make([]uint16, log.w)
 	}
 
 	log.count = count
 	log.topk = make(map[string]uint, log.k)
 }
 
-func (log *Log) getMin(e string) uint8 {
-	value := uint8(math.MaxUint8)
+func (log *Log) getMin(e string) uint16 {
+	value := uint16(math.MaxUint16)
 	w := uint(len(log.count[0]))
 	d := uint(len(log.count))
 	h1, h2 := hashn(e)
 	for i := uint(0); i < d; i++ {
 		column := (h1 + uint32(i)*h2) % uint32(w)
-		value = uint8(math.Min(float64(log.count[i][column]), float64(value)))
+		value = uint16(math.Min(float64(log.count[i][column]), float64(value)))
 	}
 	return value
 }
 
-func (log *Log) increaseDecision(c uint8) bool {
+func (log *Log) increaseDecision(c uint16) bool {
 	return rand.Float64() < math.Pow(float64(log.x), -float64(c))
 }
 
@@ -145,7 +145,7 @@ func (log *Log) Update(e string) {
 		h1, h2 := hashn(e)
 		for i := uint(0); i < d; i++ {
 			column := (h1 + uint32(i)*h2) % uint32(w)
-			if log.count[i][column] == c && c+1 < math.MaxUint8 {
+			if log.count[i][column] == c && c+1 < math.MaxUint16 {
 				log.count[i][column] = c + 1
 			}
 		}
@@ -197,14 +197,14 @@ func (log *Log) Query(key string) uint {
 	return uint(log.getValue(c))
 }
 
-func (log *Log) getPointValue(c uint8) float64 {
+func (log *Log) getPointValue(c uint16) float64 {
 	if c == 0 {
 		return 0
 	}
 	return math.Pow(float64(log.x), float64(c-1))
 }
 
-func (log *Log) getValue(c uint8) float64 {
+func (log *Log) getValue(c uint16) float64 {
 	if c <= 1 {
 		return log.getPointValue(c)
 	}
