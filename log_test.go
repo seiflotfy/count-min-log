@@ -1,9 +1,7 @@
 package countmin
 
 import (
-	"bufio"
 	"fmt"
-	"os"
 	"testing"
 )
 
@@ -13,25 +11,13 @@ func TestCountMin(t *testing.T) {
 	if err != nil {
 		t.Error("Expected no error, go ", err)
 	}
-	sk := NewSketch(2718282, 7)
 
-	for i := 0; i < 1; i++ {
-		fd, err := os.Open("/usr/share/dict/web2")
-		if err != nil {
-			fmt.Println(err.Error())
-			return
-		}
-		scanner := bufio.NewScanner(fd)
-
-		for scanner.Scan() {
-			s := scanner.Text()
-			log.Update(s)
-			sk.Increment(s)
-		}
+	for i := 0; i < 1000000; i++ {
+		log.Update("seif")
 	}
 	topK := log.GetTopK()
 	for k := range topK {
-		fmt.Println(k, log.Query(k), sk.Count(k))
+		fmt.Println(k, log.Query(k))
 	}
 	log.Update("seif")
 }

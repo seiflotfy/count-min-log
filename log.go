@@ -91,7 +91,7 @@ func NewLog(delta float64, epsilon float64, k uint) (*Log, error) {
 NewDefaultLog returns a logeth with delta = 0.0000001, epsilon = 0.0001 and k = 10
 */
 func NewDefaultLog() (*Log, error) {
-	return NewLog(0.001, 0.00000001, 10)
+	return NewLog(0.001, 0.000001, 5)
 }
 
 /*
