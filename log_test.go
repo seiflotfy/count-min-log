@@ -1,40 +1,34 @@
-package countmin
+package cml
 
 import (
-	"bufio"
 	"fmt"
-	"os"
 	"testing"
 )
 
-func TestCountMin(t *testing.T) {
-
-	log, err := NewDefaultLog()
+func TestCountMinLog8(t *testing.T) {
+	log8, err := NewSketch8(1000000, 10, true, 1.095, true, true, 8)
 	if err != nil {
 		t.Error("Expected no error, go ", err)
 	}
 
-	for i := 0; i < 1000; i++ {
-		fd, err := os.Open("/usr/share/dict/web2")
-		if err != nil {
-			fmt.Println(err.Error())
-			return
-		}
-		scanner := bufio.NewScanner(fd)
+	for i := 0; i < 1000000; i++ {
+		log8.IncreaseCount("seif")
+	}
 
-		j := 0
-		for scanner.Scan() {
-			s := scanner.Text()
-			log.Update(s)
-			j++
-			if j == 100 {
-				break
-			}
-		}
-		fd.Close()
+	fmt.Println(log8.GetCount("seif"))
+	fmt.Println(log8.GetProbability("seif"))
+}
+
+func TestCountMinLog16(t *testing.T) {
+	log16, err := NewSketch16(1000000, 10, true, 1.00026, true, true, 16)
+	if err != nil {
+		t.Error("Expected no error, go ", err)
 	}
-	topK := log.GetTopK()
-	for k := range topK {
-		fmt.Println(k, log.Query(k))
+
+	for i := 0; i < 1000000; i++ {
+		log16.IncreaseCount("seif")
 	}
+
+	fmt.Println(log16.GetCount("seif"))
+	fmt.Println(log16.GetProbability("seif"))
 }
