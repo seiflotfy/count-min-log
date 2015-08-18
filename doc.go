@@ -19,8 +19,10 @@ SOFTWARE.
 */
 
 /*
-Package cml implments the Count-Min-Log datastructure
+Package cml implments the Count-Min-Log datastructure.
+
 It is based on Count-Min-Log sketch: Approximately counting with approximate counters - Guillaume Pitel & Geoffroy Fouquier
+
 http://iswag-symposium.org/2015/pdfs/shortpaper1.pdf
 
 TL;DR: Count-Min-Log Sketch for improved Average Relative Error on low frequency events
