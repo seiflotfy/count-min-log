@@ -1,4 +1,6 @@
 # Count-Min-Log
+[![GoDoc](https://godoc.org/github.com/seiflotfy/count-min-log?status.svg)](https://godoc.org/github.com/seiflotfy/count-min-log)
+
 [Count-Min-Log sketch: Approximately counting with approximate counters - Guillaume Pitel & Geoffroy Fouquier](http://iswag-symposium.org/2015/pdfs/shortpaper1.pdf)
 
 <b>TL;DR:</b> Count-Min-Log Sketch for improved Average Relative Error on low frequency events
