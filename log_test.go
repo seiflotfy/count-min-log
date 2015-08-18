@@ -6,7 +6,7 @@ import (
 )
 
 func TestCountMinLog8(t *testing.T) {
-	log8, err := NewSketch8(1000000, 10, true, 1.095, true, true, 8)
+	log8, err := NewDefaultSketch8()
 	if err != nil {
 		t.Error("Expected no error, go ", err)
 	}
@@ -16,11 +16,11 @@ func TestCountMinLog8(t *testing.T) {
 	}
 
 	fmt.Println(log8.GetCount("seif"))
-	fmt.Println(log8.GetProbability("seif"))
+	//fmt.Println(math.Abs(1000000 - log8.GetCount("seif")))
 }
 
 func TestCountMinLog16(t *testing.T) {
-	log16, err := NewSketch16(1000000, 10, true, 1.00026, true, true, 16)
+	log16, err := NewDefaultSketch16()
 	if err != nil {
 		t.Error("Expected no error, go ", err)
 	}
@@ -30,5 +30,5 @@ func TestCountMinLog16(t *testing.T) {
 	}
 
 	fmt.Println(log16.GetCount("seif"))
-	fmt.Println(log16.GetProbability("seif"))
+	//fmt.Println(log16.GetProbability("seif"))
 }

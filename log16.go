@@ -63,6 +63,13 @@ func NewSketch16(w uint, k uint, conservative bool, exp float64,
 	}, nil
 }
 
+/*
+NewDefaultSketch16 ...
+*/
+func NewDefaultSketch16() (*Sketch16, error) {
+	return NewSketch16(1000000, 10, true, 1.00026, true, true, 16)
+}
+
 func (sk *Sketch16) randomLog(c uint16, exp float64) bool {
 	pIncrease := 1.0 / (fullValue16(c+1, sk.getExp(c+1)) - fullValue16(c, sk.getExp(c)))
 	return rand.Float64() < pIncrease

@@ -72,6 +72,13 @@ func NewSketch8(w uint, k uint, conservative bool, exp float64,
 	}, nil
 }
 
+/*
+NewDefaultSketch8 ...
+*/
+func NewDefaultSketch8() (*Sketch8, error) {
+	return NewSketch8(1000000, 10, true, 1.5, true, true, 8)
+}
+
 func (sk *Sketch8) randomLog(c uint8, exp float64) bool {
 	pIncrease := 1.0 / (fullValue8(c+1, sk.getExp(c+1)) - fullValue8(c, sk.getExp(c)))
 	return rand.Float64() < pIncrease
