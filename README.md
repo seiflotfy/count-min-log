@@ -17,7 +17,7 @@ import cml
 ...
 
 sk, err := cml.NewDefaultSketch8()
-sk.IncreaseCount("scott pilgrim")
+sk.IncreaseCount([]byte("scott pilgrim"))
 ...
 
 sk.GetCount("scott pilgrim")
@@ -34,7 +34,7 @@ import cml
 ...
 
 sk, err := cml.NewDefaultSketch16()
-sk.IncreaseCount("scott pilgrim")
+sk.IncreaseCount([]byte("scott pilgrim"))
 ...
 
 sk.GetCount("scott pilgrim")
