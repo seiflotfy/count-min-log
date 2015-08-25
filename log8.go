@@ -78,7 +78,19 @@ func NewSketch8(w uint, k uint, conservative bool, exp float64,
 NewDefaultSketch8 returns a new Count-Min-Log sketch with 8-bit registers and default settings
 */
 func NewDefaultSketch8() (*Sketch8, error) {
-	return NewSketch8(1000000, 10, true, 1.5, true, true, 8)
+	return NewSketch8(1000000, 7, true, 1.5, true, true, 8)
+}
+
+/*
+NewForCapacity8 returns a new Count-Min-Log sketch with 8-bit registers optimized for a given max capacity and expected error rate
+*/
+func NewForCapacity8(capacity uint64, e float64) (*Sketch8, error) {
+	// e = 2n/w    ==>    w = 2n/e
+	if !(e >= 0.001 && e < 1.0) {
+		return nil, errors.New("e needs to be >= 0.001 and < 1.0")
+	}
+	w := float64(2*capacity) / e
+	return NewSketch8(uint(w), 7, true, 1.5, true, true, 8)
 }
 
 func (sk *Sketch8) randomLog(c uint8, exp float64) bool {

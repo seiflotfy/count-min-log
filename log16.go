@@ -66,10 +66,22 @@ func NewSketch16(w uint, k uint, conservative bool, exp float64,
 }
 
 /*
-NewDefaultSketch16 ...
+NewDefaultSketch16 returns a new Count-Min-Log sketch with 16-bit registers and default settings
 */
 func NewDefaultSketch16() (*Sketch16, error) {
-	return NewSketch16(1000000, 10, true, 1.00026, true, true, 16)
+	return NewSketch16(1000000, 7, true, 1.00026, true, true, 16)
+}
+
+/*
+NewForCapacity16 returns a new Count-Min-Log sketch with 16-bit registers optimized for a given max capacity and expected error rate
+*/
+func NewForCapacity16(capacity uint64, e float64) (*Sketch16, error) {
+	// e = 2n/w    ==>    w = 2n/e
+	if !(e >= 0.001 && e < 1.0) {
+		return nil, errors.New("e needs to be >= 0.001 and < 1.0")
+	}
+	w := float64(2*capacity) / e
+	return NewSketch16(uint(w), 7, true, 1.00026, true, true, 16)
 }
 
 func (sk *Sketch16) randomLog(c uint16, exp float64) bool {
