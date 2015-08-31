@@ -3,7 +3,6 @@ package cml
 import (
 	"errors"
 	"math"
-	"math/rand"
 )
 
 func value16(c uint16, exp float64) float64 {
@@ -42,9 +41,9 @@ NewSketch16 returns a new Count-Min-Log sketch with 16-bit registers
 */
 func NewSketch16(w uint, k uint, conservative bool, exp float64,
 	maxSample bool, progressive bool, nBits uint) (*Sketch16, error) {
-	store := make([][]uint16, k)
+	store := make([][]uint16, k, k)
 	for i := uint(0); i < k; i++ {
-		store[i] = make([]uint16, w)
+		store[i] = make([]uint16, w, w)
 	}
 	cMax := math.Pow(2.0, float64(nBits)) - 1.0
 	if cMax > math.MaxUint16 {
@@ -66,6 +65,17 @@ func NewSketch16(w uint, k uint, conservative bool, exp float64,
 }
 
 /*
+NewSketch16ForEpsilonDelta ...
+*/
+func NewSketch16ForEpsilonDelta(epsilon, delta float64) (*Sketch16, error) {
+	var (
+		width = uint(math.Ceil(math.E / epsilon))
+		depth = uint(math.Ceil(math.Log(1 / delta)))
+	)
+	return NewSketch16(width, depth, true, 1.00026, true, true, 16)
+}
+
+/*
 NewDefaultSketch16 returns a new Count-Min-Log sketch with 16-bit registers and default settings
 */
 func NewDefaultSketch16() (*Sketch16, error) {
@@ -81,12 +91,12 @@ func NewForCapacity16(capacity uint64, e float64) (*Sketch16, error) {
 		return nil, errors.New("e needs to be >= 0.001 and < 1.0")
 	}
 	w := float64(2*capacity) / e
-	return NewSketch16(uint(w), 7, true, 1.00026, true, true, 16)
+	return NewSketch16(uint(w), 1, true, 1.00026, true, true, 16)
 }
 
-func (sk *Sketch16) randomLog(c uint16, exp float64) bool {
+func (sk *Sketch16) randomLog(c uint16) bool {
 	pIncrease := 1.0 / (fullValue16(c+1, sk.getExp(c+1)) - fullValue16(c, sk.getExp(c)))
-	return rand.Float64() < pIncrease
+	return randFloat() < pIncrease
 }
 
 func (sk *Sketch16) getExp(c uint16) float64 {
@@ -97,12 +107,28 @@ func (sk *Sketch16) getExp(c uint16) float64 {
 }
 
 /*
+GetFillRate ...
+*/
+func (sk *Sketch16) GetFillRate() float64 {
+	occs := 0.0
+	size := sk.w * sk.k
+	for _, row := range sk.store {
+		for _, col := range row {
+			if col > 0 {
+				occs++
+			}
+		}
+	}
+	return 100 * occs / float64(size)
+}
+
+/*
 Reset the Sketch to a fresh state (all counters set to 0)
 */
 func (sk *Sketch16) Reset() {
-	sk.store = make([][]uint16, sk.k)
-	for i := uint(0); i < sk.k; i++ {
-		sk.store[i] = make([]uint16, sk.w)
+	sk.store = make([][]uint16, sk.k, sk.k)
+	for i := 0; i < len(sk.store); i++ {
+		sk.store[i] = make([]uint16, sk.w, sk.w)
 	}
 	sk.totalCount = 0
 }
@@ -112,7 +138,7 @@ IncreaseCount increases the count of `s` by one, return true if added and the cu
 */
 func (sk *Sketch16) IncreaseCount(s []byte) (bool, float64) {
 	sk.totalCount++
-	v := make([]uint16, sk.k)
+	v := make([]uint16, sk.k, sk.k)
 	vmin := uint16(math.MaxUint16)
 	vmax := uint16(0)
 	for i := range v {
@@ -136,7 +162,7 @@ func (sk *Sketch16) IncreaseCount(s []byte) (bool, float64) {
 		return false, 0.0
 	}
 
-	increase := sk.randomLog(c, 0.0)
+	increase := sk.randomLog(c)
 	if increase {
 		for i := uint(0); i < sk.k; i++ {
 			nc := v[i]
@@ -153,12 +179,11 @@ func (sk *Sketch16) IncreaseCount(s []byte) (bool, float64) {
 GetCount returns the count of `s`
 */
 func (sk *Sketch16) GetCount(s []byte) float64 {
-	cl := make([]uint16, sk.k)
 	clmin := uint16(math.MaxUint16)
 	for i := uint(0); i < sk.k; i++ {
-		cl[i] = sk.store[i][hash(s, i, sk.w)]
-		if cl[i] < clmin {
-			clmin = cl[i]
+		cl := sk.store[i][hash(s, i, sk.w)]
+		if cl < clmin {
+			clmin = cl
 		}
 	}
 	c := clmin

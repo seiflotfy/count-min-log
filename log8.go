@@ -2,10 +2,7 @@ package cml
 
 import (
 	"errors"
-	"hash/fnv"
 	"math"
-	"math/rand"
-	"strconv"
 )
 
 func value8(c uint8, exp float64) float64 {
@@ -20,13 +17,6 @@ func fullValue8(c uint8, exp float64) float64 {
 		return value8(c, exp)
 	}
 	return (1.0 - value8(c+1, exp)) / (1.0 - exp)
-}
-
-func hash(s []byte, i uint, w uint) uint {
-	hasher := fnv.New32a()
-	hasher.Write(s)
-	hasher.Write([]byte(strconv.Itoa(int(i))))
-	return uint(hasher.Sum32()) % w
 }
 
 /*
@@ -47,13 +37,24 @@ type Sketch8 struct {
 }
 
 /*
+NewSketch8ForEpsilonDelta ...
+*/
+func NewSketch8ForEpsilonDelta(epsilon, delta float64) (*Sketch8, error) {
+	var (
+		width = uint(math.Ceil(math.E / epsilon))
+		depth = uint(math.Ceil(math.Log(1 / delta)))
+	)
+	return NewSketch8(width, depth, true, 1.00026, true, true, 16)
+}
+
+/*
 NewSketch8 returns a new Count-Min-Log sketch with 8-bit registers
 */
 func NewSketch8(w uint, k uint, conservative bool, exp float64,
 	maxSample bool, progressive bool, nBits uint) (*Sketch8, error) {
-	store := make([][]uint8, k)
+	store := make([][]uint8, k, k)
 	for i := uint(0); i < k; i++ {
-		store[i] = make([]uint8, w)
+		store[i] = make([]uint8, w, w)
 	}
 	cMax := math.Pow(2.0, float64(nBits)) - 1.0
 	if cMax > math.MaxUint8 {
@@ -93,9 +94,9 @@ func NewForCapacity8(capacity uint64, e float64) (*Sketch8, error) {
 	return NewSketch8(uint(w), 7, true, 1.5, true, true, 8)
 }
 
-func (sk *Sketch8) randomLog(c uint8, exp float64) bool {
+func (sk *Sketch8) randomLog(c uint8) bool {
 	pIncrease := 1.0 / (fullValue8(c+1, sk.getExp(c+1)) - fullValue8(c, sk.getExp(c)))
-	return rand.Float64() < pIncrease
+	return randFloat() < pIncrease
 }
 
 func (sk *Sketch8) getExp(c uint8) float64 {
@@ -109,9 +110,9 @@ func (sk *Sketch8) getExp(c uint8) float64 {
 Reset the Sketch to a fresh state (all counters set to 0)
 */
 func (sk *Sketch8) Reset() {
-	sk.store = make([][]uint8, sk.k)
+	sk.store = make([][]uint8, sk.k, sk.k)
 	for i := uint(0); i < sk.k; i++ {
-		sk.store[i] = make([]uint8, sk.w)
+		sk.store[i] = make([]uint8, sk.w, sk.w)
 	}
 	sk.totalCount = 0
 }
@@ -121,15 +122,14 @@ IncreaseCount increases the count of `s` by one, return true if added and the cu
 */
 func (sk *Sketch8) IncreaseCount(s []byte) (bool, float64) {
 	sk.totalCount++
-	v := make([]uint8, sk.k)
+	v := make([]uint8, sk.k, sk.k)
 	vmin := uint8(math.MaxUint8)
 	vmax := uint8(0)
 	for i := range v {
 		v[i] = sk.store[i][hash(s, uint(i), sk.w)]
 		if v[i] < vmin {
 			vmin = v[i]
-		}
-		if v[i] > vmax {
+		} else if v[i] > vmax {
 			vmax = v[i]
 		}
 	}
@@ -145,7 +145,7 @@ func (sk *Sketch8) IncreaseCount(s []byte) (bool, float64) {
 		return false, 0.0
 	}
 
-	increase := sk.randomLog(c, 0.0)
+	increase := sk.randomLog(c)
 	if increase {
 		for i := uint(0); i < sk.k; i++ {
 			nc := v[i]
@@ -162,12 +162,11 @@ func (sk *Sketch8) IncreaseCount(s []byte) (bool, float64) {
 GetCount returns the count of `s`
 */
 func (sk *Sketch8) GetCount(s []byte) float64 {
-	cl := make([]uint8, sk.k)
 	clmin := uint8(math.MaxUint8)
 	for i := uint(0); i < sk.k; i++ {
-		cl[i] = sk.store[i][hash(s, i, sk.w)]
-		if cl[i] < clmin {
-			clmin = cl[i]
+		cl := sk.store[i][hash(s, i, sk.w)]
+		if cl < clmin {
+			clmin = cl
 		}
 	}
 	c := clmin
