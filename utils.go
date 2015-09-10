@@ -2,9 +2,8 @@ package cml
 
 import (
 	"math/rand"
-	"strconv"
 
-	"code.google.com/p/gofarmhash"
+	"github.com/dgryski/go-farm"
 )
 
 func randFloat() float64 {
@@ -12,6 +11,5 @@ func randFloat() float64 {
 }
 
 func hash(s []byte, i, w uint) uint {
-	str := strconv.Itoa(int(i)) + string(s)
-	return uint(farmhash.Hash64([]byte(str))) % w
+	return uint(farm.Hash64WithSeed(s, uint64(i))) % w
 }
