@@ -1,6 +1,8 @@
 package cml
 
 import (
+	"bytes"
+	"encoding/binary"
 	"errors"
 	"math"
 )
@@ -23,17 +25,17 @@ func fullValue16(c uint16, exp float64) float64 {
 Sketch16 is a Count-Min-Log sketch 16-bit registers
 */
 type Sketch16 struct {
-	w            uint
-	k            uint
-	conservative bool
-	exp          float64
 	maxSample    bool
 	progressive  bool
+	conservative bool
+	w            uint
+	k            uint
 	nBits        uint
+	totalCount   uint
+	exp          float64
+	cMax         float64
 
-	store      [][]uint16
-	totalCount uint
-	cMax       float64
+	store [][]uint16
 }
 
 /*
@@ -176,9 +178,9 @@ func (sk *Sketch16) IncreaseCount(s []byte) (bool, float64) {
 }
 
 /*
-GetCount returns the count of `s`
+Frequency returns the count of `s`
 */
-func (sk *Sketch16) GetCount(s []byte) float64 {
+func (sk *Sketch16) Frequency(s []byte) float64 {
 	clmin := uint16(math.MaxUint16)
 	for i := uint(0); i < sk.k; i++ {
 		cl := sk.store[i][hash(s, i, sk.w)]
@@ -191,12 +193,161 @@ func (sk *Sketch16) GetCount(s []byte) float64 {
 }
 
 /*
-GetProbability returns the error probability of `s`
+Probability returns the error probability of `s`
 */
-func (sk *Sketch16) GetProbability(s []byte) float64 {
-	v := sk.GetCount(s)
+func (sk *Sketch16) Probability(s []byte) float64 {
+	v := sk.Frequency(s)
 	if v > 0 {
 		return v / float64(sk.totalCount)
 	}
 	return 0
+}
+
+/*
+TotalCount returns total count of samples
+*/
+func (sk *Sketch16) TotalCount() uint {
+	return sk.totalCount
+}
+
+/*
+Marshall returns a serialized byte array representing the structure
+*/
+func (sk *Sketch16) Marshall() ([]byte, error) {
+	buf := new(bytes.Buffer)
+
+	maxSample := uint8(0)
+	if sk.maxSample {
+		maxSample = 1
+	}
+	progressive := uint8(0)
+	if sk.progressive {
+		progressive = 1
+	}
+	conservative := uint8(0)
+	if sk.conservative {
+		conservative = 1
+	}
+	if err := binary.Write(buf, binary.LittleEndian, maxSample); err != nil {
+		return nil, err
+	}
+	if err := binary.Write(buf, binary.LittleEndian, progressive); err != nil {
+		return nil, err
+	}
+	if err := binary.Write(buf, binary.LittleEndian, conservative); err != nil {
+		return nil, err
+	}
+	if err := binary.Write(buf, binary.LittleEndian, uint64(sk.w)); err != nil {
+		return nil, err
+	}
+	if err := binary.Write(buf, binary.LittleEndian, uint64(sk.k)); err != nil {
+		return nil, err
+	}
+	if err := binary.Write(buf, binary.LittleEndian, uint64(sk.nBits)); err != nil {
+		return nil, err
+	}
+	if err := binary.Write(buf, binary.LittleEndian, uint64(sk.totalCount)); err != nil {
+		return nil, err
+	}
+	if err := binary.Write(buf, binary.LittleEndian, float64(sk.exp)); err != nil {
+		return nil, err
+	}
+	if err := binary.Write(buf, binary.LittleEndian, float64(sk.cMax)); err != nil {
+		return nil, err
+	}
+
+	bytes := make([]byte, sk.k*sk.w*2, sk.k*sk.w*2)
+	for i := range sk.store {
+		for j, value := range sk.store[i] {
+			d := make([]byte, 2)
+			pos := uint(i)*sk.w*2 + uint(j)*2
+			binary.LittleEndian.PutUint16(d, value)
+			bytes[pos] = d[0]
+			bytes[pos+1] = d[1]
+		}
+	}
+	data := append(buf.Bytes(), bytes...)
+	return data, nil
+}
+
+/*
+Unmarshall16 returns a Sketch16 from an serialized byte array
+*/
+func Unmarshall16(b []byte) (*Sketch16, error) {
+	imaxSample := uint8(0)
+	iprogressive := uint8(0)
+	iconservative := uint8(0)
+	w := uint64(0)
+	k := uint64(0)
+	nBits := uint64(0)
+	totalCount := uint64(0)
+	exp := float64(0)
+	cMax := float64(0)
+	buf := bytes.NewReader(b[0:1])
+
+	if err := binary.Read(buf, binary.LittleEndian, &imaxSample); err != nil {
+		return nil, err
+	}
+	buf = bytes.NewReader(b[1:2])
+	if err := binary.Read(buf, binary.LittleEndian, &iprogressive); err != nil {
+		return nil, err
+	}
+	buf = bytes.NewReader(b[2:3])
+	if err := binary.Read(buf, binary.LittleEndian, &iconservative); err != nil {
+		return nil, err
+	}
+
+	maxSample := false
+	if imaxSample > 0 {
+		maxSample = true
+	}
+	progressive := false
+	if iprogressive > 0 {
+		progressive = true
+	}
+	conservative := false
+	if iconservative > 0 {
+		conservative = true
+	}
+
+	buf = bytes.NewReader(b[3:11])
+	if err := binary.Read(buf, binary.LittleEndian, &w); err != nil {
+		return nil, err
+	}
+	buf = bytes.NewReader(b[11:19])
+	if err := binary.Read(buf, binary.LittleEndian, &k); err != nil {
+		return nil, err
+	}
+	buf = bytes.NewReader(b[19:27])
+	if err := binary.Read(buf, binary.LittleEndian, &nBits); err != nil {
+		return nil, err
+	}
+	buf = bytes.NewReader(b[27:35])
+	if err := binary.Read(buf, binary.LittleEndian, &totalCount); err != nil {
+		return nil, err
+	}
+	buf = bytes.NewReader(b[35:43])
+	if err := binary.Read(buf, binary.LittleEndian, &exp); err != nil {
+		return nil, err
+	}
+	buf = bytes.NewReader(b[43:51])
+	if err := binary.Read(buf, binary.LittleEndian, &cMax); err != nil {
+		return nil, err
+	}
+
+	store := make([][]uint16, k, k)
+	for i := range store {
+		store[i] = make([]uint16, w, w)
+		for j := range store[i] {
+			pos := 51 + uint(i)*uint(w)*2 + uint(j)*2
+			value := binary.LittleEndian.Uint16(b[pos : pos+2])
+			store[i][j] = value
+		}
+	}
+
+	sketch16 := &Sketch16{maxSample: maxSample, progressive: progressive, conservative: conservative,
+		w: uint(w), k: uint(k), nBits: uint(nBits), totalCount: uint(totalCount),
+		exp: exp, cMax: cMax, store: store}
+
+	return sketch16, nil
 }

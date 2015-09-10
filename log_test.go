@@ -17,23 +17,23 @@ func TestLog8AddAndCount(t *testing.T) {
 	log.IncreaseCount([]byte("d"))
 	log.IncreaseCount([]byte("a"))
 	log.IncreaseCount([]byte("a"))
-	if count := log.GetCount([]byte("a")); uint(count) != 3 {
+	if count := log.Frequency([]byte("a")); uint(count) != 3 {
 		t.Errorf("expected 3, got %d", uint(count))
 	}
 
-	if count := log.GetCount([]byte("b")); uint(count) != 2 {
+	if count := log.Frequency([]byte("b")); uint(count) != 2 {
 		t.Errorf("expected 2, got %d", uint(count))
 	}
 
-	if count := log.GetCount([]byte("c")); uint(count) != 1 {
+	if count := log.Frequency([]byte("c")); uint(count) != 1 {
 		t.Errorf("expected 1, got %d", uint(count))
 	}
 
-	if count := log.GetCount([]byte("d")); uint(count) != 1 {
+	if count := log.Frequency([]byte("d")); uint(count) != 1 {
 		t.Errorf("expected 1, got %d", uint(count))
 	}
 
-	if count := log.GetCount([]byte("x")); uint(count) != 0 {
+	if count := log.Frequency([]byte("x")); uint(count) != 0 {
 		t.Errorf("expected 0, got %d", uint(count))
 	}
 }
@@ -50,23 +50,23 @@ func TestLog16AddAndCount(t *testing.T) {
 	log.IncreaseCount([]byte("d"))
 	log.IncreaseCount([]byte("a"))
 	log.IncreaseCount([]byte("a"))
-	if count := log.GetCount([]byte("a")); uint(count) != 3 {
+	if count := log.Frequency([]byte("a")); uint(count) != 3 {
 		t.Errorf("expected 3, got %d", uint(count))
 	}
 
-	if count := log.GetCount([]byte("b")); uint(count) != 2 {
+	if count := log.Frequency([]byte("b")); uint(count) != 2 {
 		t.Errorf("expected 2, got %d", uint(count))
 	}
 
-	if count := log.GetCount([]byte("c")); uint(count) != 1 {
+	if count := log.Frequency([]byte("c")); uint(count) != 1 {
 		t.Errorf("expected 1, got %d", uint(count))
 	}
 
-	if count := log.GetCount([]byte("d")); uint(count) != 1 {
+	if count := log.Frequency([]byte("d")); uint(count) != 1 {
 		t.Errorf("expected 1, got %d", uint(count))
 	}
 
-	if count := log.GetCount([]byte("x")); uint(count) != 0 {
+	if count := log.Frequency([]byte("x")); uint(count) != 0 {
 		t.Errorf("expected 0, got %d", uint(count))
 	}
 }
@@ -140,6 +140,98 @@ func BenchmarkLogCount(b *testing.B) {
 	b.StartTimer()
 
 	for n := 0; n < b.N; n++ {
-		log.GetCount(data[n])
+		log.Frequency(data[n])
+	}
+}
+
+// Ensures that Add adds to the set and Count returns the correct
+// approximation.
+func TestLog16Marshall(t *testing.T) {
+	log, _ := NewDefaultSketch16()
+
+	log.IncreaseCount([]byte("a"))
+	log.IncreaseCount([]byte("b"))
+	log.IncreaseCount([]byte("c"))
+	log.IncreaseCount([]byte("b"))
+	log.IncreaseCount([]byte("d"))
+	log.IncreaseCount([]byte("a"))
+	log.IncreaseCount([]byte("a"))
+
+	data, err := log.Marshall()
+
+	if err != nil {
+		t.Error("expected no error marshalling, got", err)
+	}
+
+	alog, err := Unmarshall16(data)
+
+	if err != nil {
+		t.Error("expected no error unmarshalling, got", err)
+	}
+
+	if count := alog.Frequency([]byte("a")); uint(count) != 3 {
+		t.Errorf("expected 3, got %d", uint(count))
+	}
+
+	if count := alog.Frequency([]byte("b")); uint(count) != 2 {
+		t.Errorf("expected 2, got %d", uint(count))
+	}
+
+	if count := alog.Frequency([]byte("c")); uint(count) != 1 {
+		t.Errorf("expected 1, got %d", uint(count))
+	}
+
+	if count := alog.Frequency([]byte("d")); uint(count) != 1 {
+		t.Errorf("expected 1, got %d", uint(count))
+	}
+
+	if count := alog.Frequency([]byte("x")); uint(count) != 0 {
+		t.Errorf("expected 0, got %d", uint(count))
+	}
+}
+
+// Ensures that Add adds to the set and Count returns the correct
+// approximation.
+func TestLog8Marshall(t *testing.T) {
+	log, _ := NewDefaultSketch8()
+
+	log.IncreaseCount([]byte("a"))
+	log.IncreaseCount([]byte("b"))
+	log.IncreaseCount([]byte("c"))
+	log.IncreaseCount([]byte("b"))
+	log.IncreaseCount([]byte("d"))
+	log.IncreaseCount([]byte("a"))
+	log.IncreaseCount([]byte("a"))
+
+	data, err := log.Marshall()
+
+	if err != nil {
+		t.Error("expected no error marshalling, got", err)
+	}
+
+	alog, err := Unmarshall8(data)
+
+	if err != nil {
+		t.Error("expected no error unmarshalling, got", err)
+	}
+
+	if count := alog.Frequency([]byte("a")); uint(count) != 3 {
+		t.Errorf("expected 3, got %d", uint(count))
+	}
+
+	if count := alog.Frequency([]byte("b")); uint(count) != 2 {
+		t.Errorf("expected 2, got %d", uint(count))
+	}
+
+	if count := alog.Frequency([]byte("c")); uint(count) != 1 {
+		t.Errorf("expected 1, got %d", uint(count))
+	}
+
+	if count := alog.Frequency([]byte("d")); uint(count) != 1 {
+		t.Errorf("expected 1, got %d", uint(count))
+	}
+
+	if count := alog.Frequency([]byte("x")); uint(count) != 0 {
+		t.Errorf("expected 0, got %d", uint(count))
 	}
 }
