@@ -138,7 +138,7 @@ func (sk *Sketch16) Reset() {
 /*
 IncreaseCount increases the count of `s` by one, return true if added and the current count of `s`
 */
-func (sk *Sketch16) IncreaseCount(s []byte) (bool, float64) {
+func (sk *Sketch16) IncreaseCount(s []byte) bool {
 	sk.totalCount++
 	v := make([]uint16, sk.k, sk.k)
 	vmin := uint16(math.MaxUint16)
@@ -160,21 +160,17 @@ func (sk *Sketch16) IncreaseCount(s []byte) (bool, float64) {
 		c = vmin
 	}
 
-	if float64(c) > sk.cMax {
-		return false, 0.0
+	if float64(c) > sk.cMax || !sk.randomLog(c) {
+		return false
 	}
 
-	increase := sk.randomLog(c)
-	if increase {
-		for i := uint(0); i < sk.k; i++ {
-			nc := v[i]
-			if !sk.conservative || vmin == nc {
-				sk.store[i][hash(s, i, sk.w)] = nc + 1
-			}
+	for i := uint(0); i < sk.k; i++ {
+		nc := v[i]
+		if !sk.conservative || vmin == nc {
+			sk.store[i][hash(s, i, sk.w)] = nc + 1
 		}
-		return increase, fullValue16(vmin+1, sk.getExp(vmin+1))
 	}
-	return false, fullValue16(vmin, sk.getExp(vmin))
+	return true
 }
 
 /*
@@ -211,9 +207,9 @@ func (sk *Sketch16) TotalCount() uint {
 }
 
 /*
-Marshall returns a serialized byte array representing the structure
+Marshal returns a serialized byte array representing the structure
 */
-func (sk *Sketch16) Marshall() ([]byte, error) {
+func (sk *Sketch16) Marshal() ([]byte, error) {
 	buf := new(bytes.Buffer)
 
 	maxSample := uint8(0)
@@ -271,9 +267,9 @@ func (sk *Sketch16) Marshall() ([]byte, error) {
 }
 
 /*
-Unmarshall16 returns a Sketch16 from an serialized byte array
+Unmarshal16 returns a Sketch16 from an serialized byte array
 */
-func Unmarshall16(b []byte) (*Sketch16, error) {
+func Unmarshal16(b []byte) (*Sketch16, error) {
 	imaxSample := uint8(0)
 	iprogressive := uint8(0)
 	iconservative := uint8(0)
