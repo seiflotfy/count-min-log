@@ -22,9 +22,9 @@ func fullValue16(c uint16, exp float64) float64 {
 }
 
 /*
-Sketch16 is a Count-Min-Log sketch 16-bit registers
+Sketch is a Count-Min-Log sketch 16-bit registers
 */
-type Sketch16 struct {
+type Sketch struct {
 	maxSample    bool
 	progressive  bool
 	conservative bool
@@ -39,10 +39,10 @@ type Sketch16 struct {
 }
 
 /*
-NewSketch16 returns a new Count-Min-Log sketch with 16-bit registers
+NewSketch returns a new Count-Min-Log sketch with 16-bit registers
 */
-func NewSketch16(w uint, k uint, conservative bool, exp float64,
-	maxSample bool, progressive bool, nBits uint) (*Sketch16, error) {
+func NewSketch(w uint, k uint, conservative bool, exp float64,
+	maxSample bool, progressive bool, nBits uint) (*Sketch, error) {
 	store := make([][]uint16, k, k)
 	for i := uint(0); i < k; i++ {
 		store[i] = make([]uint16, w, w)
@@ -52,7 +52,7 @@ func NewSketch16(w uint, k uint, conservative bool, exp float64,
 		return nil,
 			errors.New("using 16 bit registers allows a max nBits value of 16")
 	}
-	return &Sketch16{
+	return &Sketch{
 		w:            w,
 		k:            k,
 		conservative: conservative,
@@ -67,41 +67,41 @@ func NewSketch16(w uint, k uint, conservative bool, exp float64,
 }
 
 /*
-NewSketch16ForEpsilonDelta ...
+NewSketchForEpsilonDelta ...
 */
-func NewSketch16ForEpsilonDelta(epsilon, delta float64) (*Sketch16, error) {
+func NewSketchForEpsilonDelta(epsilon, delta float64) (*Sketch, error) {
 	var (
 		width = uint(math.Ceil(math.E / epsilon))
 		depth = uint(math.Ceil(math.Log(1 / delta)))
 	)
-	return NewSketch16(width, depth, true, 1.00026, true, true, 16)
+	return NewSketch(width, depth, true, 1.00026, true, true, 16)
 }
 
 /*
-NewDefaultSketch16 returns a new Count-Min-Log sketch with 16-bit registers and default settings
+NewDefaultSketch returns a new Count-Min-Log sketch with 16-bit registers and default settings
 */
-func NewDefaultSketch16() (*Sketch16, error) {
-	return NewSketch16(1000000, 7, true, 1.00026, true, true, 16)
+func NewDefaultSketch() (*Sketch, error) {
+	return NewSketch(1000000, 7, true, 1.00026, true, true, 16)
 }
 
 /*
 NewForCapacity16 returns a new Count-Min-Log sketch with 16-bit registers optimized for a given max capacity and expected error rate
 */
-func NewForCapacity16(capacity uint64, e float64) (*Sketch16, error) {
+func NewForCapacity16(capacity uint64, e float64) (*Sketch, error) {
 	// e = 2n/w    ==>    w = 2n/e
 	if !(e >= 0.001 && e < 1.0) {
 		return nil, errors.New("e needs to be >= 0.001 and < 1.0")
 	}
 	w := float64(2*capacity) / e
-	return NewSketch16(uint(w), 1, true, 1.00026, true, true, 16)
+	return NewSketch(uint(w), 1, true, 1.00026, true, true, 16)
 }
 
-func (sk *Sketch16) randomLog(c uint16) bool {
+func (sk *Sketch) randomLog(c uint16) bool {
 	pIncrease := 1.0 / (fullValue16(c+1, sk.getExp(c+1)) - fullValue16(c, sk.getExp(c)))
 	return randFloat() < pIncrease
 }
 
-func (sk *Sketch16) getExp(c uint16) float64 {
+func (sk *Sketch) getExp(c uint16) float64 {
 	if sk.progressive == true {
 		return 1.0 + ((sk.exp - 1.0) * (float64(c) - 1.0) / sk.cMax)
 	}
@@ -111,7 +111,7 @@ func (sk *Sketch16) getExp(c uint16) float64 {
 /*
 GetFillRate ...
 */
-func (sk *Sketch16) GetFillRate() float64 {
+func (sk *Sketch) GetFillRate() float64 {
 	occs := 0.0
 	size := sk.w * sk.k
 	for _, row := range sk.store {
@@ -127,7 +127,7 @@ func (sk *Sketch16) GetFillRate() float64 {
 /*
 Reset the Sketch to a fresh state (all counters set to 0)
 */
-func (sk *Sketch16) Reset() {
+func (sk *Sketch) Reset() {
 	sk.store = make([][]uint16, sk.k, sk.k)
 	for i := 0; i < len(sk.store); i++ {
 		sk.store[i] = make([]uint16, sk.w, sk.w)
@@ -138,7 +138,7 @@ func (sk *Sketch16) Reset() {
 /*
 IncreaseCount increases the count of `s` by one, return true if added and the current count of `s`
 */
-func (sk *Sketch16) IncreaseCount(s []byte) bool {
+func (sk *Sketch) IncreaseCount(s []byte) bool {
 	sk.totalCount++
 	v := make([]uint16, sk.k, sk.k)
 	vmin := uint16(math.MaxUint16)
@@ -176,7 +176,7 @@ func (sk *Sketch16) IncreaseCount(s []byte) bool {
 /*
 Frequency returns the count of `s`
 */
-func (sk *Sketch16) Frequency(s []byte) float64 {
+func (sk *Sketch) Frequency(s []byte) float64 {
 	clmin := uint16(math.MaxUint16)
 	for i := uint(0); i < sk.k; i++ {
 		cl := sk.store[i][hash(s, i, sk.w)]
@@ -191,7 +191,7 @@ func (sk *Sketch16) Frequency(s []byte) float64 {
 /*
 Probability returns the error probability of `s`
 */
-func (sk *Sketch16) Probability(s []byte) float64 {
+func (sk *Sketch) Probability(s []byte) float64 {
 	v := sk.Frequency(s)
 	if v > 0 {
 		return v / float64(sk.totalCount)
@@ -202,14 +202,14 @@ func (sk *Sketch16) Probability(s []byte) float64 {
 /*
 TotalCount returns total count of samples
 */
-func (sk *Sketch16) TotalCount() uint {
+func (sk *Sketch) TotalCount() uint {
 	return sk.totalCount
 }
 
 /*
 Marshal returns a serialized byte array representing the structure
 */
-func (sk *Sketch16) Marshal() ([]byte, error) {
+func (sk *Sketch) Marshal() ([]byte, error) {
 	buf := new(bytes.Buffer)
 
 	maxSample := uint8(0)
@@ -267,9 +267,9 @@ func (sk *Sketch16) Marshal() ([]byte, error) {
 }
 
 /*
-Unmarshal16 returns a Sketch16 from an serialized byte array
+Unmarshal16 returns a Sketch from an serialized byte array
 */
-func Unmarshal16(b []byte) (*Sketch16, error) {
+func Unmarshal16(b []byte) (*Sketch, error) {
 	imaxSample := uint8(0)
 	iprogressive := uint8(0)
 	iconservative := uint8(0)
@@ -341,9 +341,9 @@ func Unmarshal16(b []byte) (*Sketch16, error) {
 		}
 	}
 
-	sketch16 := &Sketch16{maxSample: maxSample, progressive: progressive, conservative: conservative,
+	sketch := &Sketch{maxSample: maxSample, progressive: progressive, conservative: conservative,
 		w: uint(w), k: uint(k), nBits: uint(nBits), totalCount: uint(totalCount),
 		exp: exp, cMax: cMax, store: store}
 
-	return sketch16, nil
+	return sketch, nil
 }

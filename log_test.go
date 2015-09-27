@@ -8,7 +8,7 @@ import (
 // Ensures that Add adds to the set and Count returns the correct
 // approximation.
 func TestLog16AddAndCount(t *testing.T) {
-	log, _ := NewDefaultSketch16()
+	log, _ := NewDefaultSketch()
 
 	log.IncreaseCount([]byte("a"))
 	log.IncreaseCount([]byte("b"))
@@ -40,7 +40,7 @@ func TestLog16AddAndCount(t *testing.T) {
 
 // Ensures that Reset restores the sketch to its original state.
 func TestLog16Reset(t *testing.T) {
-	log, _ := NewDefaultSketch16()
+	log, _ := NewDefaultSketch()
 	log.IncreaseCount([]byte("a"))
 	log.IncreaseCount([]byte("b"))
 	log.IncreaseCount([]byte("c"))
@@ -62,7 +62,7 @@ func TestLog16Reset(t *testing.T) {
 
 func BenchmarkLogAdd(b *testing.B) {
 	b.StopTimer()
-	log, _ := NewDefaultSketch16()
+	log, _ := NewDefaultSketch()
 	data := make([][]byte, b.N)
 	for i := 0; i < b.N; i++ {
 		data[i] = []byte(strconv.Itoa(i))
@@ -76,7 +76,7 @@ func BenchmarkLogAdd(b *testing.B) {
 
 func BenchmarkLogCount(b *testing.B) {
 	b.StopTimer()
-	log, _ := NewDefaultSketch16()
+	log, _ := NewDefaultSketch()
 	data := make([][]byte, b.N)
 	for i := 0; i < b.N; i++ {
 		data[i] = []byte(strconv.Itoa(i))
@@ -92,7 +92,7 @@ func BenchmarkLogCount(b *testing.B) {
 // Ensures that Add adds to the set and Count returns the correct
 // approximation.
 func TestLog16Marshall(t *testing.T) {
-	log, _ := NewDefaultSketch16()
+	log, _ := NewDefaultSketch()
 
 	log.IncreaseCount([]byte("a"))
 	log.IncreaseCount([]byte("b"))
