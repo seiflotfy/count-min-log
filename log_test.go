@@ -7,7 +7,7 @@ import (
 
 // Ensures that Add adds to the set and Count returns the correct
 // approximation.
-func TestLog16AddAndCount(t *testing.T) {
+func TestLogAddAndCount(t *testing.T) {
 	log, _ := NewDefaultSketch()
 
 	log.IncreaseCount([]byte("a"))
@@ -39,7 +39,7 @@ func TestLog16AddAndCount(t *testing.T) {
 }
 
 // Ensures that Reset restores the sketch to its original state.
-func TestLog16Reset(t *testing.T) {
+func TestLogReset(t *testing.T) {
 	log, _ := NewDefaultSketch()
 	log.IncreaseCount([]byte("a"))
 	log.IncreaseCount([]byte("b"))
@@ -91,7 +91,7 @@ func BenchmarkLogCount(b *testing.B) {
 
 // Ensures that Add adds to the set and Count returns the correct
 // approximation.
-func TestLog16Marshall(t *testing.T) {
+func TestLogMarshall(t *testing.T) {
 	log, _ := NewDefaultSketch()
 
 	log.IncreaseCount([]byte("a"))
@@ -108,7 +108,7 @@ func TestLog16Marshall(t *testing.T) {
 		t.Error("expected no error marshalling, got", err)
 	}
 
-	alog, err := Unmarshal16(data)
+	alog, err := Unmarshal(data)
 
 	if err != nil {
 		t.Error("expected no error unmarshalling, got", err)
