@@ -267,9 +267,9 @@ func (sk *Sketch) Marshal() ([]byte, error) {
 }
 
 /*
-Unmarshal16 returns a Sketch from an serialized byte array
+Unmarshal returns a Sketch from an serialized byte array
 */
-func Unmarshal16(b []byte) (*Sketch, error) {
+func Unmarshal(b []byte) (*Sketch, error) {
 	imaxSample := uint8(0)
 	iprogressive := uint8(0)
 	iconservative := uint8(0)
