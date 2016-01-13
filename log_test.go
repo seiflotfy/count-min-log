@@ -1,10 +1,11 @@
 package cml
 
 import (
-	"strconv"
+	"fmt"
 	"testing"
 )
 
+/*
 // Ensures that Add adds to the set and Count returns the correct
 // approximation.
 func TestLogAddAndCount(t *testing.T) {
@@ -133,4 +134,28 @@ func TestLogMarshall(t *testing.T) {
 	if count := alog.Frequency([]byte("x")); uint(count) != 0 {
 		t.Errorf("expected 0, got %d", uint(count))
 	}
+}
+*/
+
+func TestMerge(t *testing.T) {
+
+	sk, _ := NewDefaultSketch()
+
+	c1 := uint16(60000)
+	c2 := uint16(60000)
+
+	r1 := uint64(fullValue16(c1, sk.getExp(c1)))
+	r2 := uint64(fullValue16(c2, sk.getExp(c2)))
+	r3 := r1 + r2
+
+	fmt.Println(c1, sk.getExp(c1))
+	fmt.Println(c2, sk.getExp(c2))
+	fmt.Println(r1, "+", r2, "=", r3)
+
+	c3 := uint16(rfullValue16(float64(r3), sk.getExp(uint16(r3))))
+	fmt.Println(c3)
+	fmt.Println(uint64(fullValue16(c3, sk.getExp(c3))))
+
+	fmt.Println("===")
+
 }

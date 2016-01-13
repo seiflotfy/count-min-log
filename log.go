@@ -5,6 +5,8 @@ import (
 	"encoding/binary"
 	"errors"
 	"math"
+
+	"github.com/seiflotfy/do"
 )
 
 func value16(c uint16, exp float64) float64 {
@@ -19,6 +21,13 @@ func fullValue16(c uint16, exp float64) float64 {
 		return value16(c, exp)
 	}
 	return (1.0 - value16(c+1, exp)) / (1.0 - exp)
+}
+
+func rfullValue16(r, exp float64) float64 {
+	if r <= 0 {
+		return 0
+	}
+	return do.Round((math.Log(1+r*(-1+exp)))/(math.Log(exp)), 0)
 }
 
 /*
