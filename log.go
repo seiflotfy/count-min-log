@@ -94,9 +94,8 @@ func NewForCapacity16(capacity uint64, e float64) (*Sketch, error) {
 	if capacity < 1000000 {
 		capacity = 1000000
 	}
-	d := math.E / e
-	w := float64(capacity) / (d * 8)
-	return NewSketch(uint(w), uint(d), true, 1.00026, true, true, 16)
+	w := float64(capacity) / 256
+	return NewSketch(uint(w), 32, true, 1.00026, true, true, 16)
 }
 
 func (sk *Sketch) randomLog(c uint16) bool {
