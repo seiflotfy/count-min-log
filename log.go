@@ -69,7 +69,7 @@ func (cml *Sketch) increaseDecision(c uint16) bool {
 }
 
 /*
-IncreaseCount increases the count of `s` by one, return true if added and the current count of `s`
+Update increases the count of `s` by one, return true if added and the current count of `s`
 */
 func (cml *Sketch) Update(e []byte) bool {
 	sk := make([]*uint16, cml.d, cml.d)

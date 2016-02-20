@@ -9,25 +9,6 @@ Count-Min Sketch is a widely adopted algorithm for approximate event counting in
 
 ## Example Usage
 
-8-bit version
-
-```go
-import cml
-
-...
-
-sk, err := cml.NewDefaultSketch8()
-sk.IncreaseCount([]byte("scott pilgrim"))
-...
-
-sk.GetCount("scott pilgrim")
-
-// >> 1
-
-```
-
-16-bit version
-
 ```go
 import cml
 
@@ -37,7 +18,7 @@ sk, err := cml.NewDefaultSketch16()
 sk.IncreaseCount([]byte("scott pilgrim"))
 ...
 
-sk.GetCount("scott pilgrim")
+sk.Query("scott pilgrim")
 
 // >> 1
 
