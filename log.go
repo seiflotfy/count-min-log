@@ -74,14 +74,14 @@ func NewSketchForEpsilonDelta(epsilon, delta float64) (*Sketch, error) {
 		width = uint(math.Ceil(math.E / epsilon))
 		depth = uint(math.Ceil(math.Log(1 / delta)))
 	)
-	return NewSketch(width, depth, true, 1.00026, true, true, 16)
+	return NewSketch(width, depth, true, 1.00026, false, true, 16)
 }
 
 /*
 NewDefaultSketch returns a new Count-Min-Log sketch with 16-bit registers and default settings
 */
 func NewDefaultSketch() (*Sketch, error) {
-	return NewSketch(1000000, 7, true, 1.00026, true, true, 16)
+	return NewSketch(1000000, 7, true, 1.00026, false, true, 16)
 }
 
 /*
@@ -95,7 +95,7 @@ func NewForCapacity16(capacity uint64, e float64) (*Sketch, error) {
 		capacity = 1000000
 	}
 	w := float64(capacity) / 256
-	return NewSketch(uint(w), 32, true, 1.00026, true, true, 16)
+	return NewSketch(uint(w), 32, true, 1.00026, false, true, 16)
 }
 
 func (sk *Sketch) randomLog(c uint16) bool {
