@@ -3,6 +3,8 @@ package cml
 import (
 	"errors"
 	"math"
+
+	"github.com/dgryski/go-farm"
 )
 
 /*
@@ -47,7 +49,7 @@ func NewSketchForEpsilonDelta(epsilon, delta float64) (*Sketch, error) {
 NewDefaultSketch returns a new Count-Min-Log Sketch with 16-bit registers and default settings
 */
 func NewDefaultSketch() (*Sketch, error) {
-	return NewSketch(1000000, 7, 1.00026)
+	return NewSketch(250000, 1, 1.00026)
 }
 
 /*
@@ -60,8 +62,8 @@ func NewForCapacity16(capacity uint64, e float64) (*Sketch, error) {
 	if capacity < 1000000 {
 		capacity = 1000000
 	}
-	w := float64(capacity) / 256
-	return NewSketch(uint(w), 32, 1.00026)
+	w := float64(capacity) / 64
+	return NewSketch(uint(w), 8, 1.00026)
 }
 
 func (cml *Sketch) increaseDecision(c uint16) bool {
@@ -74,8 +76,14 @@ Update increases the count of `s` by one, return true if added and the current c
 func (cml *Sketch) Update(e []byte) bool {
 	sk := make([]*uint16, cml.d, cml.d)
 	c := uint16(math.MaxUint16)
+
+	hsum := farm.Hash64(e)
+	h1 := uint32(hsum & 0xffffffff)
+	h2 := uint32((hsum >> 32) & 0xffffffff)
+
 	for i := range sk {
-		if sk[i] = &cml.store[i][hash(e, uint(i), cml.w)]; *sk[i] < c {
+		saltedHash := uint((h1 + uint32(i)*h2))
+		if sk[i] = &cml.store[i][(saltedHash % cml.w)]; *sk[i] < c {
 			c = *sk[i]
 		}
 	}
@@ -96,8 +104,14 @@ BulkUpdate increases the count of `s` by one, return true if added and the curre
 func (cml *Sketch) BulkUpdate(e []byte, freq uint) bool {
 	sk := make([]*uint16, cml.d, cml.d)
 	c := uint16(math.MaxUint16)
+
+	hsum := farm.Hash64(e)
+	h1 := uint32(hsum & 0xffffffff)
+	h2 := uint32((hsum >> 32) & 0xffffffff)
+
 	for i := range sk {
-		if sk[i] = &cml.store[i][hash(e, uint(i), cml.w)]; *sk[i] < c {
+		saltedHash := uint((h1 + uint32(i)*h2))
+		if sk[i] = &cml.store[i][(saltedHash % cml.w)]; *sk[i] < c {
 			c = *sk[i]
 		}
 	}
@@ -139,8 +153,14 @@ Query returns the count of `e`
 */
 func (cml *Sketch) Query(e []byte) float64 {
 	c := uint16(math.MaxUint16)
+
+	hsum := farm.Hash64(e)
+	h1 := uint32(hsum & 0xffffffff)
+	h2 := uint32((hsum >> 32) & 0xffffffff)
+
 	for i := range cml.store {
-		if sk := cml.store[i][hash(e, uint(i), cml.w)]; sk < c {
+		saltedHash := uint((h1 + uint32(i)*h2))
+		if sk := cml.store[i][(saltedHash % cml.w)]; sk < c {
 			c = sk
 		}
 	}
