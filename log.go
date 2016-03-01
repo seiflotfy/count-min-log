@@ -46,13 +46,6 @@ func NewSketchForEpsilonDelta(epsilon, delta float64) (*Sketch, error) {
 }
 
 /*
-NewDefaultSketch returns a new Count-Min-Log Sketch with 16-bit registers and default settings
-*/
-func NewDefaultSketch() (*Sketch, error) {
-	return NewSketch(250000, 1, 1.00026)
-}
-
-/*
 NewForCapacity16 returns a new Count-Min-Log Sketch with 16-bit registers optimized for a given max capacity and expected error rate
 */
 func NewForCapacity16(capacity uint64, e float64) (*Sketch, error) {
@@ -62,8 +55,11 @@ func NewForCapacity16(capacity uint64, e float64) (*Sketch, error) {
 	if capacity < 1000000 {
 		capacity = 1000000
 	}
-	w := float64(capacity) / 64
-	return NewSketch(uint(w), 8, 1.00026)
+
+	m := math.Ceil((float64(capacity) * math.Log(e)) / math.Log(1.0/(math.Pow(2.0, math.Log(2.0)))))
+	w := math.Ceil(math.Log(2.0) * m / float64(capacity))
+
+	return NewSketch(uint(m/w), uint(w), 1.00026)
 }
 
 func (cml *Sketch) increaseDecision(c uint16) bool {

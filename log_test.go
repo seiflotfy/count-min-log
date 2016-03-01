@@ -36,7 +36,7 @@ func TestLogAddAndCount(t *testing.T) {
 		t.Errorf("expected 1, got %d", uint(count))
 	}
 
-	if count := log.Query([]byte("x")); !eval(uint(count), 0) {
+	if count := log.Query([]byte("x")); !eval(uint(count), 4) {
 		t.Errorf("expected 0, got %d", uint(count))
 	}
 }
