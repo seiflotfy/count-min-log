@@ -67,7 +67,7 @@ func NewSketch(w uint, k uint, conservative bool, exp float64,
 }
 
 /*
-NewSketchForEpsilonDelta ...
+NewSketchForEpsilonDelta for a given error rate epsiolen with a probability of delta
 */
 func NewSketchForEpsilonDelta(epsilon, delta float64) (*Sketch, error) {
 	var (
@@ -111,7 +111,7 @@ func (sk *Sketch) getExp(c uint16) float64 {
 }
 
 /*
-GetFillRate ...
+GetFillRate return a float representing the fill rate 0.0 being empty and 1.0 being full
 */
 func (sk *Sketch) GetFillRate() float64 {
 	occs := 0.0
