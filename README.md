@@ -20,7 +20,7 @@ sk, err := cml.NewDefaultSketch()
 sk.IncreaseCount([]byte("scott pilgrim"))
 ...
 
-sk.GetCount("scott pilgrim")
+sk.Frequency([]byte("scott pilgrim"))
 
 // >> 1
 
