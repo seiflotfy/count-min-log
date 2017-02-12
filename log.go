@@ -35,7 +35,7 @@ func NewSketch(w uint, d uint, exp float64) (*Sketch, error) {
 }
 
 /*
-NewSketchForEpsilonDelta ...
+NewSketchForEpsilonDelta for a given error rate epsiolen with a probability of delta
 */
 func NewSketchForEpsilonDelta(epsilon, delta float64) (*Sketch, error) {
 	var (

@@ -7,6 +7,9 @@
 
 Count-Min Sketch is a widely adopted algorithm for approximate event counting in large scale processing. However, the original version of the Count-Min-Sketch (CMS) suffers of some deficiences, especially if one is interested in the low-frequency items, such as in text- mining related tasks. Several variants of CMS have been proposed to compensate for the high relative error for low-frequency events, but the proposed solutions tend to correct the errors instead of preventing them. In this paper, we propose the Count-Min-Log sketch, which uses logarithm-based, approximate counters instead of linear counters to improve the average relative error of CMS at constant memory footprint.
 
+This version implements the 16 bit register version. Will add back the 8-bit version soon.
+
+
 ## Example Usage
 
 ```go
@@ -14,11 +17,12 @@ import cml
 
 ...
 
-sk, err := cml.NewDefaultSketch16()
+
+sk, err := cml.NewDefaultSketch()
 sk.IncreaseCount([]byte("scott pilgrim"))
 ...
 
-sk.Query("scott pilgrim")
+sk.Frequency([]byte("scott pilgrim"))
 
 // >> 1
 
