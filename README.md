@@ -16,14 +16,10 @@ This version implements the 16 bit register version. Will add back the 8-bit ver
 import cml
 
 ...
-
-
 sk, err := cml.NewDefaultSketch()
 sk.IncreaseCount([]byte("scott pilgrim"))
 ...
 
-sk.Frequency([]byte("scott pilgrim"))
-
-// >> 1
+sk.Frequency([]byte("scott pilgrim")) // ==> 1
 
 ```
