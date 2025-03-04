@@ -3,6 +3,7 @@ package cml
 import (
 	"fmt"
 	"math"
+	"slices"
 	"testing"
 )
 
@@ -437,22 +438,22 @@ func TestOverflowProtection(t *testing.T) {
 
 func BenchmarkSketch(b *testing.B) {
 	// Test different sketch sizes
-	sizes := []struct {
-		capacity uint64
-		error    float64
+	configs := []struct {
+		epsilon float64
+		delta   float64
 	}{
-		{1e6, 0.01},   // Small sketch
-		{10e6, 0.01},  // Medium sketch
-		{100e6, 0.01}, // Large sketch
+		{0.01, 0.01}, // High accuracy
+		{0.05, 0.01}, // Medium accuracy
+		{0.10, 0.01}, // Lower accuracy
 	}
 
-	for _, size := range sizes {
-		sketch, err := NewForCapacity[uint16](size.capacity, size.error)
+	for _, config := range configs {
+		sketch, err := NewSketchForEpsilonDelta[uint16](config.epsilon, config.delta)
 		if err != nil {
 			b.Fatalf("Failed to create sketch: %v", err)
 		}
 
-		name := fmt.Sprintf("fn=Update/cap=%d/err=%.3f", size.capacity, size.error)
+		name := fmt.Sprintf("fn=Update/eps=%.3f/delta=%.3f", config.epsilon, config.delta)
 		b.Run(name, func(b *testing.B) {
 			key := []byte("test-key")
 			b.ResetTimer()
@@ -464,7 +465,7 @@ func BenchmarkSketch(b *testing.B) {
 		// Test BulkUpdate with different frequencies
 		freqs := []uint{10, 100, 1000, 10000}
 		for _, freq := range freqs {
-			name := fmt.Sprintf("fn=BulkUpdate/cap=%d/err=%.3f/freq=%d", size.capacity, size.error, freq)
+			name := fmt.Sprintf("fn=BulkUpdate/eps=%.3f/delta=%.3f/freq=%d", config.epsilon, config.delta, freq)
 			b.Run(name, func(b *testing.B) {
 				key := []byte("test-key")
 				b.ResetTimer()
@@ -475,12 +476,86 @@ func BenchmarkSketch(b *testing.B) {
 		}
 
 		// Benchmark Query operation
-		b.Run(fmt.Sprintf("fn=Query/cap=%d/err=%.3f", size.capacity, size.error), func(b *testing.B) {
+		b.Run(fmt.Sprintf("fn=Query/eps=%.3f/delta=%.3f", config.epsilon, config.delta), func(b *testing.B) {
 			key := []byte("test-key")
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				sketch.Query(key)
 			}
 		})
+
+		// Benchmark serialization
+		data, err := sketch.MarshalBinary()
+		if err != nil {
+			b.Fatalf("Failed to marshal sketch: %v", err)
+		}
+
+		name = fmt.Sprintf("fn=MarshalBinary/eps=%.3f/delta=%.3f", config.epsilon, config.delta)
+		b.Run(name, func(b *testing.B) {
+			b.ReportAllocs()
+			b.ReportMetric(float64(len(data)), "bytes")
+			for i := 0; i < b.N; i++ {
+				_, _ = sketch.MarshalBinary()
+			}
+		})
+
+		// Benchmark deserialization
+		name = fmt.Sprintf("fn=UnmarshalBinary/eps=%.3f/delta=%.3f", config.epsilon, config.delta)
+		b.Run(name, func(b *testing.B) {
+			b.ReportAllocs()
+			for i := 0; i < b.N; i++ {
+				var newSketch Sketch[uint16]
+				_ = newSketch.UnmarshalBinary(data)
+			}
+		})
 	}
+}
+
+// FuzzSerialization tests that Count-Min-Log sketches can be correctly serialized and deserialized
+// across all register sizes and realistic configurations.
+func FuzzSerialization(f *testing.F) {
+	f.Add([]byte("seed"), float64(0.01), float64(0.01), uint64(1))
+
+	f.Fuzz(func(t *testing.T, key []byte, epsilon, delta float64, updates uint64) {
+		// Bound epsilon and delta to realistic values: (0.001, 0.1)
+		epsilon = 0.001 + math.Mod(math.Abs(epsilon), 0.099)
+		delta = 0.001 + math.Mod(math.Abs(delta), 0.099)
+
+		// Create sketch with realistic parameters
+		sketch, err := NewSketchForEpsilonDelta[uint16](epsilon, delta)
+		if err != nil {
+			t.Skip()
+		}
+
+		// Update sketch to create interesting internal state
+		for i := uint64(0); i < (updates % 1000); i++ {
+			sketch.Update(key)
+		}
+
+		// Serialize
+		data, err := sketch.MarshalBinary()
+		if err != nil {
+			t.Fatalf("Marshal failed: %v", err)
+		}
+
+		// Verify data isn't empty
+		if len(data) == 0 {
+			t.Fatal("Serialized data is empty")
+		}
+
+		// Deserialize into new sketch
+		newSketch := &Sketch[uint16]{}
+		if err := newSketch.UnmarshalBinary(data); err != nil {
+			t.Fatalf("Unmarshal failed: %v", err)
+		}
+
+		// Verify parameters match
+		if sketch.w != newSketch.w || sketch.d != newSketch.d || sketch.exp != newSketch.exp {
+			t.Errorf("Parameters changed after serialization: %+v != %+v", sketch, newSketch)
+		}
+
+		if !slices.Equal(sketch.store, newSketch.store) {
+			t.Errorf("Store contents changed after serialization: %v != %v", sketch.store, newSketch.store)
+		}
+	})
 }
