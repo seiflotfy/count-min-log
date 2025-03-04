@@ -152,6 +152,11 @@ func (cml *Sketch[T]) Update(e []byte) bool {
 		}
 	}
 
+	// Check for overflow before incrementing
+	if minVal >= ^T(0) {
+		return false // Register saturated
+	}
+
 	if !cml.increaseDecision(minVal) {
 		return false
 	}
@@ -192,9 +197,15 @@ func (cml *Sketch[T]) BulkUpdate(e []byte, freq uint) bool {
 	}
 
 	anyUpdated := false
+	maxVal := ^T(0)
 
 	// Process freq increments.
 	for i := uint(0); i < freq; i++ {
+		// Stop if we've reached the maximum representable value
+		if minVal >= maxVal {
+			break
+		}
+
 		// Decide whether to increase based on the current minVal.
 		if !cml.increaseDecision(minVal) {
 			continue
@@ -232,8 +243,10 @@ func (cml *Sketch[T]) value(c T) float64 {
 	if c <= 1 {
 		return cml.pointValue(c)
 	}
-	v := cml.pointValue(c + 1)
-	return (1 - v) / (1 - cml.exp)
+	if c < ^T(0) { // Avoid overflow
+		c++
+	}
+	return (1 - cml.pointValue(c)) / (1 - cml.exp)
 }
 
 /*

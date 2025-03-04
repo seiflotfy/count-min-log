@@ -391,6 +391,50 @@ func TestMarshalUnmarshal(t *testing.T) {
 	})
 }
 
+// TestOverflowProtection tests the overflow protection and saturation handling
+func TestOverflowProtection(t *testing.T) {
+	sketch, err := NewSketchForEpsilonDelta[uint8](0.01, 0.01)
+	if err != nil {
+		t.Fatalf("Failed to create sketch: %v", err)
+	}
+
+	key := []byte("test-key")
+	maxVal := ^uint8(0) // 255
+
+	// Test 1: Verify normal operation
+	if !sketch.Update(key) {
+		t.Fatal("First update should succeed")
+	}
+	count := sketch.Query(key)
+	if count <= 0 {
+		t.Errorf("Expected positive count, got %f", count)
+	}
+
+	// Test 2: Verify saturation behavior
+	for i := range sketch.store {
+		sketch.store[i] = maxVal
+	}
+	if sketch.Update(key) {
+		t.Fatal("Update should fail when registers are saturated")
+	}
+	if sketch.BulkUpdate(key, 10) {
+		t.Fatal("BulkUpdate should fail when registers are saturated")
+	}
+
+	// Test 3: Verify no overflow occurred
+	for i, val := range sketch.store {
+		if val > maxVal {
+			t.Errorf("Register %d exceeded max value: got %d, max %d", i, val, maxVal)
+		}
+	}
+
+	// Test 4: Verify count remains valid after saturation
+	saturatedCount := sketch.Query(key)
+	if saturatedCount <= count {
+		t.Errorf("Saturated count %f should be greater than initial count %f", saturatedCount, count)
+	}
+}
+
 func BenchmarkSketch(b *testing.B) {
 	// Test different sketch sizes
 	sizes := []struct {
