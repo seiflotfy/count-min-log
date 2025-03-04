@@ -5,7 +5,6 @@ import (
 	"errors"
 	"math"
 	"math/rand/v2"
-	"unsafe"
 
 	"github.com/dgryski/go-farm"
 )
@@ -152,6 +151,11 @@ func (cml *Sketch[T]) Update(e []byte) bool {
 		}
 	}
 
+	// Check for overflow before incrementing
+	if minVal >= ^T(0) {
+		return false // Register saturated
+	}
+
 	if !cml.increaseDecision(minVal) {
 		return false
 	}
@@ -192,9 +196,15 @@ func (cml *Sketch[T]) BulkUpdate(e []byte, freq uint) bool {
 	}
 
 	anyUpdated := false
+	maxVal := ^T(0)
 
 	// Process freq increments.
 	for i := uint(0); i < freq; i++ {
+		// Stop if we've reached the maximum representable value
+		if minVal >= maxVal {
+			break
+		}
+
 		// Decide whether to increase based on the current minVal.
 		if !cml.increaseDecision(minVal) {
 			continue
@@ -232,8 +242,10 @@ func (cml *Sketch[T]) value(c T) float64 {
 	if c <= 1 {
 		return cml.pointValue(c)
 	}
-	v := cml.pointValue(c + 1)
-	return (1 - v) / (1 - cml.exp)
+	if c < ^T(0) { // Avoid overflow
+		c++
+	}
+	return (1 - cml.pointValue(c)) / (1 - cml.exp)
 }
 
 /*
@@ -278,30 +290,19 @@ Returns a binary representation of the sketch.
 */
 func (cml *Sketch[T]) MarshalBinary() ([]byte, error) {
 	// Header: w(4) + d(4) + exp(8) = 16 bytes
-	// Data: w * d * sizeof(T) bytes
-	size := 16 + int(cml.w)*int(cml.d)*int(unsafe.Sizeof(T(0)))
-	data := make([]byte, size)
+	// Initial capacity estimate (can grow if needed)
+	data := make([]byte, 16, 16+len(cml.store))
 
 	// Write header
 	binary.LittleEndian.PutUint32(data[0:], uint32(cml.w))
 	binary.LittleEndian.PutUint32(data[4:], uint32(cml.d))
 	binary.LittleEndian.PutUint64(data[8:], math.Float64bits(cml.exp))
 
-	// Write data
-	offset := 16
+	// Write each value using varint encoding
 	for _, val := range cml.store {
-		switch any(val).(type) {
-		case uint8:
-			data[offset] = uint8(val)
-			offset++
-		case uint16:
-			binary.LittleEndian.PutUint16(data[offset:], uint16(val))
-			offset += 2
-		case uint32:
-			binary.LittleEndian.PutUint32(data[offset:], uint32(val))
-			offset += 4
-		}
+		data = binary.AppendUvarint(data, uint64(val))
 	}
+
 	return data, nil
 }
 
@@ -319,39 +320,30 @@ func (cml *Sketch[T]) UnmarshalBinary(data []byte) error {
 	d := uint(binary.LittleEndian.Uint32(data[4:]))
 	exp := math.Float64frombits(binary.LittleEndian.Uint64(data[8:]))
 
-	// Validate data size
-	expectedSize := 16 + int(w)*int(d)*int(unsafe.Sizeof(T(0)))
-	if len(data) != expectedSize {
-		return errors.New("data size mismatch")
-	}
-
 	// Create new sketch
 	sketch, err := NewSketch[T](w, d, exp)
 	if err != nil {
 		return err
 	}
 
-	// Read data
+	// Read variable-length encoded values
 	offset := 16
-	switch any(T(0)).(type) {
-	case uint8:
-		for i := range sketch.store {
-			sketch.store[i] = T(data[offset])
-			offset++
+	for i := range sketch.store {
+		val, n := binary.Uvarint(data[offset:])
+		if n <= 0 {
+			return errors.New("invalid varint data")
 		}
-	case uint16:
-		for i := range sketch.store {
-			sketch.store[i] = T(binary.LittleEndian.Uint16(data[offset:]))
-			offset += 2
+		if val > uint64(^T(0)) {
+			return errors.New("value exceeds register capacity")
 		}
-	case uint32:
-		for i := range sketch.store {
-			sketch.store[i] = T(binary.LittleEndian.Uint32(data[offset:]))
-			offset += 4
-		}
+		sketch.store[i] = T(val)
+		offset += n
 	}
 
-	// Update the receiver
+	if offset != len(data) {
+		return errors.New("unexpected trailing data")
+	}
+
 	*cml = *sketch
 	return nil
 }
